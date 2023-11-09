@@ -1,4 +1,5 @@
 import math
+import os
 from os import system, mkdir, path
 from shutil import get_terminal_size
 from glob import glob
@@ -9,6 +10,19 @@ from PIL import Image
 VIDEOS_FOLDER = 'videos'
 FRAMES_FOLDER = 'frames'
 CLEAR_MODE = False
+
+folders = 'frames', 'videos'
+
+def init():
+    for folder in folders:
+        if not path.exists(folder):
+            os.mkdir(folder)
+
+    if not path.exists('chars.txt'):
+        with open('chars.txt', 'w+', encoding='utf-8') as file:
+            file.write(' .,:;"*+/!?&%#@')
+
+
 
 def clear_console():
     system('cls')
@@ -101,6 +115,7 @@ def main_menu():
 
 
 def main():
+    init()
     while True:
         main_menu()
 
