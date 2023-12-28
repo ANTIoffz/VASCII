@@ -6,12 +6,16 @@ from glob import glob
 from datetime import timedelta, datetime
 from cv2 import VideoCapture, CAP_PROP_FPS, CAP_PROP_FRAME_COUNT, imwrite
 from PIL import Image
+from sys import stdout
+
 
 VIDEOS_FOLDER = 'videos'
 FRAMES_FOLDER = 'frames'
-CLEAR_MODE = False
+DYNAMIC_CHARS = 0
+CLEAR_MODE = 2
+REPEAT = 1
 
-folders = 'frames', 'videos'
+folders = ['frames', 'videos', 'audio']
 
 def init():
     for folder in folders:
@@ -54,7 +58,8 @@ def crate_frames(video_path: str, video_filename: str, frames_file_path: str):
     for frame_number in range(int(frames_count)):
         _, frame = videoCapture.read()
         imwrite(f"{frames_file_path}/{frame_number}.jpg", frame)
-
+    
+    
 
 def start_video(video_path: str, chars_list: list):
     clear_console()
@@ -63,11 +68,14 @@ def start_video(video_path: str, chars_list: list):
     if not path.exists(frames_file_path):
         crate_frames(video_path, video_filename, frames_file_path)
 
-    division = round(255 / (len(chars_list)-1), 2)
+    division = round(256 / len(chars_list), 2)
     fps, frames_count, videoCapture = get_video_data(video_path)
     start_time = datetime.now()
-
     for frame_number in range(frames_count):
+        if DYNAMIC_CHARS:
+            chars_list = get_chars()
+            division = round(256 / len(chars_list), 2)
+            
         next_frame = True
         terminal_y = get_terminal_size().lines
         terminal_x = get_terminal_size().columns
@@ -76,19 +84,23 @@ def start_video(video_path: str, chars_list: list):
             current_time = datetime.now() - start_time
             if current_time.total_seconds() >= timedelta(seconds=frame_number / fps).total_seconds():
                 if current_time.total_seconds() >= timedelta(seconds=(frame_number + 1) / fps).total_seconds():
-                    print("SKIPPED", end='\r')
+                    stdout.write(f"\rSKIPPED {frame_number}\r")
                     next_frame = False
                     break
 
-                if CLEAR_MODE:
+                if CLEAR_MODE == 1:
                     clear_console()
-
+                
+                elif CLEAR_MODE == 2:
+                    stdout.write("\033[H\033[J")
+                
                 for pixel in list(img.getdata()):
-                    symbol_id = round(pixel / division)
-                    print(chars_list[symbol_id], end='')
+                    symbol_id = math.floor(pixel / division)
+                    stdout.write(chars_list[symbol_id])
+                    
                 break
         if next_frame:
-            print()
+            stdout.write("\n")
 
 
 
@@ -107,11 +119,14 @@ def main_menu():
         selected_video = input()
         if not selected_video or not selected_video.isdigit() or 1 < int(selected_video) > len(videos):
             continue
-
-        try:
-            start_video(videos[int(selected_video) - 1], chars_list)
-        except KeyboardInterrupt:
-            pass
+        
+        while True:
+            try:
+                start_video(videos[int(selected_video) - 1], chars_list)
+                if not REPEAT:
+                    break
+            except KeyboardInterrupt:
+                break
 
 
 def main():
